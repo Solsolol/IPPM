@@ -2284,6 +2284,7 @@
             profile={profile}
             questionLabel={isAdmin ? "Cet administrateur :" : "Ce représentant légal :"}
             orgLabel={isAdmin ? "A quelle organisation professionnelle adhère cet administrateur dans ce pays ?" : "À quelle organisation de la profession comptable adhère ce représentant légal dans ce pays ?"}
+            professionLabel={isAdmin ? "Quelle est la profession de cet administrateur ?" : "Quelle est la profession du représentant légal ?"}
           />
 
           {/* Statut au sein de la société / Fonction (toujours visible) */}
@@ -2479,7 +2480,7 @@
     };
 
     // Reusable: 3 situation checkboxes (options 1&2 cumulables, option 3 exclusive)
-    const SituationCheckboxes = ({ data, update, profile, questionLabel, orgLabel }) => {
+    const SituationCheckboxes = ({ data, update, profile, questionLabel, orgLabel, professionLabel }) => {
       const d = data || {};
       const u = (k, v) => update(k, v);
       const sitOption1 = !!d.situationOption1;
@@ -2591,7 +2592,7 @@
               </label>
               {sitOption3 && (profile === 'SPE' || profile === 'SPFPL') && (
                 <div style={{ padding: '12px 14px', background: T.color.radioBg, border: `1px solid ${T.color.primaryBlue}`, borderTop: 'none', borderBottomLeftRadius: T.radius, borderBottomRightRadius: T.radius }}>
-                  <FieldInput label="Quelle est la profession du représentant légal ?" required value={d.professionRL} onChange={v => u('professionRL', v)} />
+                  <FieldInput label={professionLabel || "Quelle est la profession du représentant légal ?"} required value={d.professionRL} onChange={v => u('professionRL', v)} />
                 </div>
               )}
             </div>
@@ -2908,7 +2909,7 @@
                     </label>
                     {pmSit3 && (profile === 'SPE' || profile === 'SPFPL') && (
                       <div style={{ padding: '12px 14px', background: T.color.radioBg, border: `1px solid ${T.color.primaryBlue}`, borderTop: 'none', borderBottomLeftRadius: T.radius, borderBottomRightRadius: T.radius }}>
-                        <FieldInput label="Quelle est l'activité de la société représentant légal personne morale ?" required value={d.activiteSociete} onChange={v => u('activiteSociete', v)} />
+                        <FieldInput label={isAdminPM ? "Quelle est l'activité de cet administrateur Personne morale ?" : "Quelle est l'activité de la société représentant légal personne morale ?"} required value={d.activiteSociete} onChange={v => u('activiteSociete', v)} />
                       </div>
                     )}
                   </div>

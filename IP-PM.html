@@ -2283,7 +2283,7 @@
             update={u}
             profile={profile}
             questionLabel={isAdmin ? "Cet administrateur :" : "Ce représentant légal :"}
-            orgLabel="À quelle organisation de la profession comptable adhère ce représentant légal dans ce pays ?"
+            orgLabel={isAdmin ? "A quelle organisation professionnelle adhère cet administrateur dans ce pays ?" : "À quelle organisation de la profession comptable adhère ce représentant légal dans ce pays ?"}
           />
 
           {/* Statut au sein de la société / Fonction (toujours visible) */}
@@ -2875,7 +2875,7 @@
                         <FieldSelect label="Pays d'exercice" required value={d.paysExercicePM} onChange={v => u('paysExercicePM', v)} options={PAYS_EXERCICE_UE_EEE} placeholder="Sélectionnez" />
                         {d.paysExercicePM && (
                           <>
-                            <FieldInput label="À quelle organisation de la profession comptable adhère ce représentant légal Personne morale dans ce pays ?" value={d.organisationProfession} onChange={v => u('organisationProfession', v)} />
+                            <FieldInput label={isAdminPM ? "A quelle organisation professionnelle adhère administrateur Personne morale dans ce pays ?" : "À quelle organisation de la profession comptable adhère ce représentant légal Personne morale dans ce pays ?"} value={d.organisationProfession} onChange={v => u('organisationProfession', v)} />
                             <FieldInput label="Numéro d'immatriculation étranger" value={d.numeroImmatriculation} onChange={v => u('numeroImmatriculation', v)} />
                           </>
                         )}
@@ -2963,7 +2963,8 @@
           )}
 
           {/* Conditional: associée = NON → Q2: mère ou filiale (toutes qualités) */}
-          {associeeNon && (
+          {/* Masqué en contexte Admin PM */}
+          {associeeNon && !isAdminPM && (
             <div style={{ borderTop: `1px solid ${T.color.border}`, paddingTop: '24px', marginTop: '8px' }}>
               <OuiNon
                 label="Cette société représentant légal est-elle associée d'une société, inscrite à l'Ordre, mère ou filiale de la société en cours d'inscription ?"

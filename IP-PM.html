@@ -4170,8 +4170,8 @@
           {/* PP connue → identité en lecture seule */}
           {knownPP && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <ReadOnlyField label="Nom de famille" value={knownPP.nom} />
               <ReadOnlyField label="Prénom" value={knownPP.prenom} />
-              <ReadOnlyField label="Nom" value={knownPP.nom} />
             </div>
           )}
 
@@ -4202,8 +4202,8 @@
 
               {person.searchMode === 'selected' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                  <ReadOnlyField label="Nom de famille" value={person.nom} />
                   <ReadOnlyField label="Prénom" value={person.prenom} />
-                  <ReadOnlyField label="Nom" value={person.nom} />
                   <ReadOnlyField label="CRO d'inscription principale" value={person.conseilRegional} />
                 </div>
               )}

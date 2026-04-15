@@ -2047,20 +2047,33 @@
       );
     };
 
-    // Dropdown for Statut
-    const StatutSelect = ({ value, onChange, autreValue, onAutreChange }) => (
+    // Options du picklist « Fonction » (contexte Admin : Administrateurs / membres du
+    // directoire / membres du conseil de surveillance). Pas d'option « Autre » : la
+    // liste est fermée.
+    const ADMIN_FONCTION_OPTIONS = [
+      "Administrateur",
+      "Membre du directoire",
+      "Membre du conseil de surveillance",
+    ];
+
+    // Dropdown for Statut / Fonction (paramétrable selon le contexte)
+    const StatutSelect = ({
+      value, onChange, autreValue, onAutreChange,
+      label = "Statut au sein de la société en cours d'inscription",
+      options = STATUT_OPTIONS,
+    }) => (
       <>
         <div style={{ marginBottom: value === 'Autre' ? '16px' : '16px' }}>
           <FieldSelect
-            label="Statut au sein de la société en cours d'inscription"
+            label={label}
             required
             value={value}
             onChange={v => { onChange(v); if (v !== 'Autre' && onAutreChange) onAutreChange(''); }}
-            options={STATUT_OPTIONS}
+            options={options}
             placeholder="Sélectionnez"
           />
         </div>
-        {value === 'Autre' && (
+        {value === 'Autre' && options.includes('Autre') && (
           <div style={{ marginBottom: '16px' }}>
             <FieldInput label="Autre - précisez" required value={autreValue || ''} onChange={v => onAutreChange && onAutreChange(v)} />
           </div>
@@ -2133,11 +2146,20 @@
     );
 
     // Personne Physique sub-card
-    const PersonnePhysiqueCard = ({ data, update, profile }) => {
+    const PersonnePhysiqueCard = ({ data, update, profile, title, actionButton, context }) => {
       const d = data || {};
       const u = (k, v) => update(k, v);
       const associeOui = d.associe === 'Oui';
       const associeNon = d.associe === 'Non';
+      // Contexte : « admin » → libellés et picklist adaptés (Administrateurs / membres
+      // du directoire / membres du conseil de surveillance). Par défaut : représentant légal.
+      const isAdmin = context === 'admin';
+      const subjectLabel = isAdmin ? 'Cet administrateur' : 'Ce représentant légal';
+      const statutLabel = isAdmin ? 'Fonction' : "Statut au sein de la société en cours d'inscription";
+      const statutOptions = isAdmin ? ADMIN_FONCTION_OPTIONS : STATUT_OPTIONS;
+      const exerceLabel = isAdmin
+        ? "Cet administrateur exercera-t-il la profession d'expert-comptable au sein de la société en cours d'inscription ?"
+        : "Ce représentant légal exercera-t-il au sein de la société en cours d'inscription ?";
       const participations = d.participations || [{}];
       const mode = d.searchMode; // undefined | 'selected' | 'manual'
       const isSelected = mode === 'selected';
@@ -2173,12 +2195,14 @@
       return (
         <SectionCard>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <SectionTitle>Représentant légal personne physique</SectionTitle>
-            <button style={{
-              background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
-              padding: '6px 16px', fontSize: '14px', color: T.color.primaryRed,
-              cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
-            }}>Ajouter</button>
+            <SectionTitle>{title || "Représentant légal personne physique"}</SectionTitle>
+            {actionButton !== undefined ? actionButton : (
+              <button style={{
+                background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
+                padding: '6px 16px', fontSize: '14px', color: T.color.primaryRed,
+                cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
+              }}>Ajouter</button>
+            )}
           </div>
 
           {/* Search autocomplete */}
@@ -2258,17 +2282,24 @@
             data={d}
             update={u}
             profile={profile}
-            questionLabel="Ce représentant légal :"
+            questionLabel={isAdmin ? "Cet administrateur :" : "Ce représentant légal :"}
             orgLabel="À quelle organisation de la profession comptable adhère ce représentant légal dans ce pays ?"
           />
 
-          {/* Statut au sein de la société (toujours visible) */}
-          <StatutSelect value={d.statut} onChange={v => u('statut', v)} autreValue={d.statutAutre} onAutreChange={v => u('statutAutre', v)} />
+          {/* Statut au sein de la société / Fonction (toujours visible) */}
+          <StatutSelect
+            value={d.statut}
+            onChange={v => u('statut', v)}
+            autreValue={d.statutAutre}
+            onAutreChange={v => u('statutAutre', v)}
+            label={statutLabel}
+            options={statutOptions}
+          />
 
           {/* Question "exercera-t-il" — visible UNIQUEMENT pour SPE et SEC */}
           {(profile === 'SPE' || profile === 'SEC') && (
             <OuiNon
-              label="Ce représentant légal exercera-t-il au sein de la société en cours d'inscription ?"
+              label={exerceLabel}
               required
               value={d.exerceAuSein}
               onChange={v => u('exerceAuSein', v)}
@@ -2277,7 +2308,7 @@
 
           {/* Q3: associé */}
           <OuiNon
-            label="Ce représentant légal est-il ou sera t-il associé au sein de la société en cours d'inscription ?"
+            label={`${subjectLabel} est-il ou sera t-il associé au sein de la société en cours d'inscription ?`}
             required
             value={d.associe}
             onChange={v => u('associe', v)}
@@ -2302,7 +2333,7 @@
 
               <div style={{ marginTop: '16px' }}>
                 <OuiNon
-                  label="Ce représentant légal est-il un bénéficiaire effectif au sens de l'article R561-1 du code monétaire et financier de la société en cours d'inscription ?"
+                  label={`${subjectLabel} est-il un bénéficiaire effectif au sens de l'article R561-1 du code monétaire et financier de la société en cours d'inscription ?`}
                   required
                   value={d.beneficiaire}
                   onChange={v => u('beneficiaire', v)}
@@ -2323,8 +2354,9 @@
             </>
           )}
 
-          {/* Scénario 12 — PP : associé = Non + profil SEC ou SPEC → question mère/filiale */}
-          {associeNon && (profile === 'SEC' || profile === 'SPEC') && (
+          {/* Scénario 12 — PP : associé = Non + profil SEC ou SPEC → question mère/filiale
+              (masquée en mode admin car non pertinente pour les administrateurs) */}
+          {associeNon && (profile === 'SEC' || profile === 'SPEC') && !isAdmin && (
             <div style={{ borderTop: `1px solid ${T.color.border}`, paddingTop: '24px', marginTop: '8px' }}>
               <OuiNon
                 label="Ce représentant légal est-il associé de la société, inscrite à l'Ordre, mère ou filiale de la société en cours d'inscription ?"
@@ -2569,7 +2601,7 @@
     };
 
     // Personne Morale sub-card
-    const PersonneMoraleCard = ({ data, update, profile, hideAssocieeQuestion = false }) => {
+    const PersonneMoraleCard = ({ data, update, profile, hideAssocieeQuestion = false, title, actionButton, context }) => {
       const d = data || {};
       const u = (k, v) => update(k, v);
       // Si la question "associée" est masquée (contexte drawer "Ajouter un associé"),
@@ -2579,16 +2611,24 @@
       const associeeNon = hideAssocieeQuestion ? false : d.associee === 'Non';
       const associeOrdreMereOui = d.associeOrdreMere === 'Oui';
       const participationsPM = d.participations || [{}];
+      // Contexte : « admin » → ajout d'un picklist « Fonction » et libellé de la
+      // question « associée » adapté à l'administrateur personne morale.
+      const isAdminPM = context === 'admin';
+      const associeeLabel = isAdminPM
+        ? "Cet administrateur Personne morale est il associé de la société en cours d'inscription ?"
+        : "Cette société représentant légal est-elle associée de la société en cours d'inscription ?";
 
       return (
         <SectionCard>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <SectionTitle>Représentant légal personne morale</SectionTitle>
-            <button style={{
-              background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
-              padding: '6px 16px', fontSize: '14px', color: T.color.primaryBlue,
-              cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
-            }}>Ajouter</button>
+            <SectionTitle>{title || "Représentant légal personne morale"}</SectionTitle>
+            {actionButton !== undefined ? actionButton : (
+              <button style={{
+                background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
+                padding: '6px 16px', fontSize: '14px', color: T.color.primaryBlue,
+                cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
+              }}>Ajouter</button>
+            )}
           </div>
 
           <SocieteSearchAutocomplete
@@ -2776,7 +2816,7 @@
             return (
               <div style={{ marginBottom: '16px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 12px 0' }}>
-                  <span style={{ color: '#C81E1E' }}>* </span>Cette société représentant légal :
+                  <span style={{ color: '#C81E1E' }}>* </span>{isAdminPM ? "Cet administrateur personne morale :" : "Cette société représentant légal :"}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {/* Option 1 — Checkbox : En cours d'inscription */}
@@ -2877,10 +2917,26 @@
             );
           })()}
 
-          {/* Q1: Cette société est-elle associée — masquée dans le drawer "Ajouter un associé" */}
+          {/* Picklist « Fonction » — UNIQUEMENT en contexte Admin, à la suite des 3
+              checkboxes de situation et AVANT la question « associée ». Liste fermée. */}
+          {isAdminPM && (
+            <div style={{ marginBottom: '16px' }}>
+              <FieldSelect
+                label="Fonction"
+                required
+                value={d.fonction || ''}
+                onChange={v => u('fonction', v)}
+                options={ADMIN_FONCTION_OPTIONS}
+                placeholder="Sélectionnez"
+              />
+            </div>
+          )}
+
+          {/* Q1: Cette société est-elle associée — masquée dans le drawer "Ajouter un associé".
+              En contexte Admin, le libellé est adapté au rôle d'administrateur personne morale. */}
           {!hideAssocieeQuestion && (
             <OuiNon
-              label="Cette société représentant légal est-elle associée de la société en cours d'inscription ?"
+              label={associeeLabel}
               required
               value={d.associee}
               onChange={v => u('associee', v)}
@@ -3538,212 +3594,55 @@
     // ============================================================
 
     // ── Carte d'un administrateur PP ──
-    const AdminPPCard = ({ data, idx, onUpdate, onRemove, canRemove }) => {
-      const d = data || {};
-      const u = onUpdate;
-      const mode = d.searchMode;
-      const isSelected = mode === 'selected';
-      const isManual = mode === 'manual';
-      const showFields = isSelected || isManual;
-      const associeOui = d.associe === 'Oui';
-      const participations = d.participations || [{}];
-
+    // Wrapper mince qui réutilise la logique complète de PersonnePhysiqueCard
+    // (situation en checkboxes, statut, associé, participation, bénéficiaire, mère/filiale, …)
+    const AdminPPCard = ({ data, idx, onUpdate, onRemove, canRemove, profile }) => {
+      const title = `Administrateurs/ membres du directoire/ membres du conseil de surveillance ${idx + 1}`;
+      const removeButton = canRemove ? (
+        <button onClick={onRemove} style={{
+          background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
+          padding: '6px 16px', fontSize: '14px', color: T.color.primaryRed,
+          cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
+        }}>Supprimer</button>
+      ) : null;
       return (
-        <SectionCard>
-          {/* En-tête */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <SectionTitle>Administrateur {idx + 1}</SectionTitle>
-            {canRemove && (
-              <button onClick={onRemove} style={{
-                background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
-                padding: '6px 16px', fontSize: '14px', color: T.color.primaryRed,
-                cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
-              }}>Supprimer</button>
-            )}
-          </div>
-
-          {/* Recherche */}
-          <PersonSearchAutocomplete
-            onSelectPerson={(person) => {
-              u('searchMode', 'selected');
-              u('civilite', person.civilite); u('nom', person.nom); u('prenom', person.prenom);
-              u('prenom2', person.prenom2 || ''); u('prenom3', person.prenom3 || ''); u('prenom4', person.prenom4 || '');
-              u('conseilRegional', person.conseilRegional);
-              u('searchLabel', `${person.civilite} ${person.nom} ${person.prenom} - ${person.region}`);
-            }}
-            onManual={() => {
-              u('searchMode', 'manual');
-              u('civilite', ''); u('nom', ''); u('prenom', ''); u('prenom2', '');
-              u('prenom3', ''); u('prenom4', ''); u('conseilRegional', '');
-              u('searchLabel', '+ Renseignez manuellement');
-            }}
-            onClear={() => {
-              u('searchMode', undefined);
-              u('civilite', ''); u('nom', ''); u('prenom', ''); u('prenom2', '');
-              u('prenom3', ''); u('prenom4', ''); u('conseilRegional', '');
-              u('searchLabel', '');
-            }}
-            searchMode={mode}
-            selectedLabel={d.searchLabel}
-          />
-
-          {showFields && (
-            <>
-              {/* Civilité */}
-              <div style={{ marginBottom: '16px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 8px 0' }}>
-                  <span style={{ color: '#C81E1E' }}>* </span>Civilité
-                </p>
-                <div style={{ display: 'flex', gap: '24px' }}>
-                  {CIVILITE_OPTIONS.map(opt => {
-                    const sel = d.civilite === opt;
-                    return (
-                      <label key={opt} onClick={isManual ? () => u('civilite', opt) : undefined} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: isManual ? 'pointer' : 'default' }}>
-                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${sel ? T.color.primaryBlue : T.color.borderMedium}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.color.white }}>
-                          {sel && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: T.color.primaryBlue }} />}
-                        </div>
-                        <span style={{ fontSize: '14px', color: T.color.textDark }}>{opt}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Identité */}
-              {isSelected ? (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <ReadOnlyField label="Nom de famille" required value={d.nom} />
-                    <ReadOnlyField label="Prénom" required value={d.prenom} />
-                    <ReadOnlyField label="Prénom 2" value={d.prenom2} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <ReadOnlyField label="Prénom 3" value={d.prenom3} />
-                    <ReadOnlyField label="Prénom 4" value={d.prenom4} />
-                  </div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <ReadOnlyField label="Conseil régional d'inscription principale" required value={d.conseilRegional} />
-                  </div>
-                  <AddressBlock data={d} onChange={(k, v) => u(k, v)} />
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <FieldInput label="Nom de famille" required value={d.nom} onChange={v => u('nom', v)} />
-                    <FieldInput label="Prénom" required value={d.prenom} onChange={v => u('prenom', v)} />
-                    <FieldInput label="Prénom 2" value={d.prenom2} onChange={v => u('prenom2', v)} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <FieldInput label="Prénom 3" value={d.prenom3} onChange={v => u('prenom3', v)} />
-                    <FieldInput label="Prénom 4" value={d.prenom4} onChange={v => u('prenom4', v)} />
-                    <FieldSelect label="Nationalité" required value={d.nationalite} onChange={v => u('nationalite', v)} options={PAYS_OPTIONS} placeholder="Sélectionnez" />
-                  </div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <FieldSelect label="Conseil régional d'inscription principale" required value={d.conseilRegional} onChange={v => u('conseilRegional', v)} options={CROEC_OPTIONS} placeholder="Sélectionnez" />
-                  </div>
-                  <AddressBlock data={d} onChange={(k, v) => u(k, v)} />
-                </>
-              )}
-
-              {/* Préciser la situation */}
-              <div style={{ marginBottom: '16px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 12px 0' }}>
-                  <span style={{ color: '#C81E1E' }}>* </span>Précisez la situation de cet administrateur :
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {STEP5_SITUATION_OPTIONS.map((opt, optIdx) => {
-                    const selected = d.situation === opt;
-                    return (
-                      <div key={opt}>
-                        <label onClick={() => u('situation', opt)} style={{
-                          display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer',
-                          background: selected ? T.color.radioBg : 'transparent',
-                          border: `1px solid ${selected ? T.color.primaryBlue : T.color.border}`,
-                          borderRadius: T.radius,
-                          borderBottomLeftRadius: selected ? '0' : T.radius,
-                          borderBottomRightRadius: selected ? '0' : T.radius,
-                          padding: '12px 14px',
-                        }}>
-                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, marginTop: '1px', border: `2px solid ${selected ? T.color.primaryBlue : T.color.borderMedium}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.color.white }}>
-                            {selected && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: T.color.primaryBlue }} />}
-                          </div>
-                          <span style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '1.4' }}>{opt}</span>
-                        </label>
-
-                        {optIdx === 0 && selected && (
-                          <div style={{ padding: '12px 14px', background: T.color.radioBg, border: `1px solid ${T.color.primaryBlue}`, borderTop: 'none', borderBottomLeftRadius: T.radius, borderBottomRightRadius: T.radius }}>
-                            <FieldSelect label="Conseil régional de l'Ordre d'inscription en cours" required value={d.conseilRegionalEnCours} onChange={v => u('conseilRegionalEnCours', v)} options={CROEC_OPTIONS} placeholder="Sélectionnez" />
-                          </div>
-                        )}
-                        {optIdx === 1 && selected && (
-                          <div style={{ padding: '12px 14px', background: T.color.radioBg, border: `1px solid ${T.color.primaryBlue}`, borderTop: 'none', borderBottomLeftRadius: T.radius, borderBottomRightRadius: T.radius, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <FieldSelect label="Pays d'exercice" required value={d.paysExercice} onChange={v => u('paysExercice', v)} options={PAYS_EXERCICE_UE_EEE} placeholder="Sélectionnez" />
-                            <FieldInput label="À quelle organisation de la profession comptable adhère cet administrateur dans ce pays ?" value={d.organisationProfession} onChange={v => u('organisationProfession', v)} />
-                            <FieldInput label="Numéro d'immatriculation étranger" value={d.numeroImmatriculation} onChange={v => u('numeroImmatriculation', v)} />
-                          </div>
-                        )}
-                        {optIdx === 2 && selected && (
-                          <div style={{ padding: '12px 14px', background: T.color.radioBg, border: `1px solid ${T.color.primaryBlue}`, borderTop: 'none', borderBottomLeftRadius: T.radius, borderBottomRightRadius: T.radius }}>
-                            <FieldInput label="Quelle est l'activité de cet administrateur ?" required value={d.activite} onChange={v => u('activite', v)} />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Participation */}
-              <OuiNon
-                label="Cet administrateur est-il ou sera t-il associé au sein de la société en cours d'inscription ?"
-                required
-                value={d.associe}
-                onChange={v => u('associe', v)}
-              />
-
-              {associeOui && (
-                <>
-                  <ParticipationSection
-                    items={participations}
-                    onAdd={() => u('participations', [...participations, {}])}
-                    onUpdate={(pIdx, newData) => {
-                      const next = [...participations];
-                      next[pIdx] = newData;
-                      u('participations', next);
-                    }}
-                    onRemove={pIdx => u('participations', participations.filter((_, i) => i !== pIdx))}
-                  />
-                  <div style={{ marginTop: '16px' }}>
-                    <OuiNon
-                      label="Cet administrateur est-il un bénéficiaire effectif au sens de l'article R561-1 du code monétaire et financier de la société en cours d'inscription ?"
-                      required
-                      value={d.beneficiaire}
-                      onChange={v => u('beneficiaire', v)}
-                    />
-                  </div>
-                  {d.beneficiaire === 'Oui' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: T.color.textDark }}>
-                          <span style={{ color: '#C81E1E', marginRight: '3px' }}>*</span>Date de naissance
-                        </label>
-                        <DatePicker value={d.dateNaissance} onChange={v => u('dateNaissance', v)} />
-                      </div>
-                      <FieldInput label="Lieu de naissance" required value={d.lieuNaissance} onChange={v => u('lieuNaissance', v)} placeholder="Saisissez une ville ou un pays" />
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </SectionCard>
+        <PersonnePhysiqueCard
+          data={data}
+          update={onUpdate}
+          profile={profile}
+          title={title}
+          actionButton={removeButton}
+          context="admin"
+        />
       );
     };
 
     // ============================================================
-    // AdminPMCard — carte personne morale (admin step)
+    // AdminPMCard — wrapper mince qui réutilise la logique complète de
+    // PersonneMoraleCard (recherche, identification, statut, mère/filiale, etc.)
     // ============================================================
-    const AdminPMCard = ({ data, idx, onUpdate, onRemove, canRemove }) => {
+    const AdminPMCard = ({ data, idx, onUpdate, onRemove, canRemove, profile }) => {
+      const title = `Administrateurs/ membres du directoire/ membres du conseil de surveillance ${idx + 1}`;
+      const removeButton = canRemove ? (
+        <button onClick={onRemove} style={{
+          background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
+          padding: '6px 16px', fontSize: '14px', color: T.color.primaryRed,
+          cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
+        }}>Supprimer</button>
+      ) : null;
+      return (
+        <PersonneMoraleCard
+          data={data}
+          update={onUpdate}
+          profile={profile}
+          title={title}
+          actionButton={removeButton}
+          context="admin"
+        />
+      );
+    };
+
+    const _UnusedAdminPMLegacy = ({ data, idx, onUpdate, onRemove, canRemove }) => {
       const d = data || {};
       const u = onUpdate;
       const associeeOui = d.associee === 'Oui';
@@ -3755,7 +3654,7 @@
         <SectionCard>
           {/* En-tête */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <SectionTitle>Administrateur (PM) {idx + 1}</SectionTitle>
+            <SectionTitle>Administrateurs/ membres du directoire/ membres du conseil de surveillance (PM) {idx + 1}</SectionTitle>
             {canRemove && (
               <button onClick={onRemove} style={{
                 background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
@@ -3995,23 +3894,14 @@
       );
     };
 
-    const StepAdminContent = ({ data, update, formeJuridique }) => {
+    const StepAdminContent = ({ data, update, formeJuridique, profile }) => {
       const d = data || {};
       const u = (k, v) => update(k, v);
 
-      const hasAdmins = d.hasAdmins;         // 'Oui' | 'Non' | undefined
       const declareAdminsPP = !!d.declareAdminsPP;
       const declareAdminsPM = !!d.declareAdminsPM;
       const adminsPP = d.adminsPP || [];
       const adminsPM = d.adminsPM || [];
-
-      const handleHasAdmins = (val) => {
-        u('hasAdmins', val);
-        if (val === 'Non') {
-          u('declareAdminsPP', false); u('adminsPP', []);
-          u('declareAdminsPM', false); u('adminsPM', []);
-        }
-      };
 
       const togglePP = () => {
         const next = !declareAdminsPP;
@@ -4056,139 +3946,107 @@
             <h2 style={{ fontSize: '24px', fontWeight: 700, color: T.color.textDark, margin: '0 0 8px 0', lineHeight: '36px' }}>
               Administrateurs / membres du directoire / membres du conseil de surveillance
             </h2>
-            <p style={{ fontSize: '13px', color: T.color.gray, margin: '0 0 4px 0' }}>
-              Applicable aux formes juridiques : {ADMIN_FORMES.join(', ')}
+            <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 8px 0', lineHeight: 1.5 }}>
+              Déclarez les administrateurs, membres du directoire, membres du conseil de surveillance hors représentants et personne de contact principal déjà déclarés plus haut.
             </p>
             <p style={{ fontSize: '13px', color: T.color.gray, margin: '0' }}>
               <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
             </p>
           </div>
 
-          {/* Question principale — Oui / Non */}
-          <SectionCard>
-            <p style={{ fontSize: '14px', color: T.color.textDark, margin: '0 0 16px 0', lineHeight: 1.6 }}>
-              Avez-vous des administrateurs, membres du directoire ou membres du conseil de surveillance supplémentaires à déclarer, en dehors des représentants légaux et de la personne de contact principal déjà renseignés ?
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { val: 'Oui', label: 'Oui' },
-                { val: 'Non', label: 'Non, aucune personne supplémentaire à déclarer' },
-              ].map(({ val, label }) => {
-                const selected = hasAdmins === val;
-                return (
-                  <label key={val} onClick={() => handleHasAdmins(val)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${selected ? T.color.primaryBlue : T.color.borderMedium}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.color.white }}>
-                      {selected && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: T.color.primaryBlue }} />}
-                    </div>
-                    <span style={{ fontSize: '14px', color: T.color.textDark }}>{label}</span>
-                  </label>
-                );
-              })}
-            </div>
+          {/* Checkboxes PP & PM (affichage simple, pile sans carte) avec blocs qui
+              s'ouvrent directement sous chaque checkbox cochée */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-            {/* Confirmation Non */}
-            {hasAdmins === 'Non' && (
-              <div style={{ marginTop: '16px', padding: '12px 16px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: T.radius, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-                <span style={{ fontSize: '13px', color: '#15803D' }}>Aucun administrateur à déclarer. Vous pouvez passer à l'étape suivante.</span>
+            {/* Checkbox PP */}
+            <label onClick={togglePP} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+              <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '2px', border: `2px solid ${declareAdminsPP ? T.color.primaryBlue : T.color.borderMedium}`, background: declareAdminsPP ? T.color.primaryBlue : T.color.white, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {declareAdminsPP && (
+                  <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                    <path d="M1 4L4 7L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span style={{ fontSize: '14px', color: T.color.textDark, lineHeight: 1.5 }}>
+                Déclarez les administrateurs/ membres du directoire/ membres du conseil de surveillance - <strong>Personne Physique</strong>.
+              </span>
+            </label>
+
+            {/* Bloc PP — s'ouvre directement SOUS la checkbox PP */}
+            {declareAdminsPP && (
+              <div style={{ marginTop: '4px', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: 0 }}>
+                    Administrateurs/ membres du directoire/ membres du conseil de surveillance
+                  </p>
+                  <button onClick={addAdmin} style={{
+                    background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
+                    padding: '6px 16px', fontSize: '14px', color: T.color.primaryBlue,
+                    cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
+                  }}>Ajouter</button>
+                </div>
+                <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 16px 0' }}>
+                  Complétez les informations pour chaque personne
+                </p>
+                {adminsPP.map((admin, idx) => (
+                  <AdminPPCard
+                    key={admin.id || idx}
+                    data={admin}
+                    idx={idx}
+                    canRemove={adminsPP.length > 1}
+                    onUpdate={(k, v) => updateAdmin(idx, k, v)}
+                    onRemove={() => removeAdmin(idx)}
+                    profile={profile}
+                  />
+                ))}
               </div>
             )}
 
-            {/* Checkboxes PP / PM — visibles uniquement si Oui */}
-            {hasAdmins === 'Oui' && (
-              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: `1px solid ${T.color.border}`, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: T.color.textDark, margin: '0 0 4px 0' }}>Sélectionnez le(s) type(s) de personnes à déclarer :</p>
+            {/* Checkbox PM */}
+            <label onClick={togglePM} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+              <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '2px', border: `2px solid ${declareAdminsPM ? T.color.primaryBlue : T.color.borderMedium}`, background: declareAdminsPM ? T.color.primaryBlue : T.color.white, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {declareAdminsPM && (
+                  <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                    <path d="M1 4L4 7L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span style={{ fontSize: '14px', color: T.color.textDark, lineHeight: 1.5 }}>
+                Déclarez les administrateurs/ membres du directoire/ membres du conseil de surveillance - <strong>Personne Morale</strong>.
+              </span>
+            </label>
 
-                {/* PP */}
-                <label onClick={togglePP} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '2px', border: `2px solid ${declareAdminsPP ? T.color.primaryBlue : T.color.borderMedium}`, background: declareAdminsPP ? T.color.primaryBlue : T.color.white, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {declareAdminsPP && (
-                      <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                        <path d="M1 4L4 7L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '14px', color: T.color.textDark, lineHeight: 1.5 }}>
-                    Personne(s) <strong>physique(s)</strong>
-                  </span>
-                </label>
-
-                {/* PM */}
-                <label onClick={togglePM} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '2px', border: `2px solid ${declareAdminsPM ? T.color.primaryBlue : T.color.borderMedium}`, background: declareAdminsPM ? T.color.primaryBlue : T.color.white, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {declareAdminsPM && (
-                      <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                        <path d="M1 4L4 7L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '14px', color: T.color.textDark, lineHeight: 1.5 }}>
-                    Personne(s) <strong>morale(s)</strong>
-                  </span>
-                </label>
+            {/* Bloc PM — s'ouvre directement SOUS la checkbox PM */}
+            {declareAdminsPM && (
+              <div style={{ marginTop: '4px', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: 0 }}>
+                    Administrateurs/ membres du directoire/ membres du conseil de surveillance
+                  </p>
+                  <button onClick={addAdminPM} style={{
+                    background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
+                    padding: '6px 16px', fontSize: '14px', color: T.color.primaryBlue,
+                    cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
+                  }}>Ajouter</button>
+                </div>
+                <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 16px 0' }}>
+                  Complétez les informations pour chaque société
+                </p>
+                {adminsPM.map((admin, idx) => (
+                  <AdminPMCard
+                    key={admin.id || idx}
+                    data={admin}
+                    idx={idx}
+                    canRemove={adminsPM.length > 1}
+                    onUpdate={(k, v) => updateAdminPM(idx, k, v)}
+                    onRemove={() => removeAdminPM(idx)}
+                    profile={profile}
+                  />
+                ))}
               </div>
             )}
-          </SectionCard>
 
-          {/* Cartes admins PP */}
-          {hasAdmins === 'Oui' && declareAdminsPP && (
-            <div style={{ borderTop: `1px solid ${T.color.border}`, paddingTop: '24px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: 0 }}>
-                  Administrateurs / membres
-                </p>
-                <button onClick={addAdmin} style={{
-                  background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
-                  padding: '6px 16px', fontSize: '14px', color: T.color.primaryBlue,
-                  cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
-                }}>Ajouter</button>
-              </div>
-              <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 16px 0' }}>
-                Complétez les informations pour chaque personne
-              </p>
-              {adminsPP.map((admin, idx) => (
-                <AdminPPCard
-                  key={admin.id || idx}
-                  data={admin}
-                  idx={idx}
-                  canRemove={adminsPP.length > 1}
-                  onUpdate={(k, v) => updateAdmin(idx, k, v)}
-                  onRemove={() => removeAdmin(idx)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Cartes admins PM */}
-          {hasAdmins === 'Oui' && declareAdminsPM && (
-            <div style={{ borderTop: `1px solid ${T.color.border}`, paddingTop: '24px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: 0 }}>
-                  Administrateurs / membres (PM)
-                </p>
-                <button onClick={addAdminPM} style={{
-                  background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
-                  padding: '6px 16px', fontSize: '14px', color: T.color.primaryBlue,
-                  cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
-                }}>Ajouter</button>
-              </div>
-              <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 16px 0' }}>
-                Complétez les informations pour chaque société
-              </p>
-              {adminsPM.map((admin, idx) => (
-                <AdminPMCard
-                  key={admin.id || idx}
-                  data={admin}
-                  idx={idx}
-                  canRemove={adminsPM.length > 1}
-                  onUpdate={(k, v) => updateAdminPM(idx, k, v)}
-                  onRemove={() => removeAdminPM(idx)}
-                />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       );
     };
@@ -4208,10 +4066,10 @@
 
     // ── 4 fonctions avec criticité ──
     const LBC_FUNCTIONS = [
-      { id: 'lbcMembre',      label: 'Membre de la direction en charge de la conformité LBC-FT',               required: true,  section: 'LBC-FT'  },
-      { id: 'lbcResponsable', label: 'Responsable de la conformité LBC-FT',                                     required: false, section: 'LBC-FT'  },
-      { id: 'qualMembre',     label: 'Membre de la direction en charge du système de management de la qualité',  required: true,  section: 'Qualité' },
-      { id: 'qualResponsable',label: 'Responsable du système de management de la qualité',                       required: false, section: 'Qualité' },
+      { id: 'lbcMembre',      label: 'Membre en charge de la conformité LBC-FT',               required: true,  section: 'LBC-FT'  },
+      { id: 'lbcResponsable', label: 'Chargé(e) de la conformité',                              required: false, section: 'LBC-FT'  },
+      { id: 'qualMembre',     label: 'Membre en charge du management du système de qualité',    required: true,  section: 'Qualité' },
+      { id: 'qualResponsable',label: 'Chargé(e) du management du système de qualité',           required: false, section: 'Qualité' },
     ];
 
     // ── Badge criticité ──
@@ -4230,17 +4088,20 @@
     );
 
     // ── Carte personne ──
-    const PersonneCard = ({ person, index, assignedByOthers, onChange, onRemove, canRemove, showError = false }) => {
+    const PersonneCard = ({ person, index, assignedByOthers, onChange, onRemove, canRemove, showError = false, onToggleFn }) => {
       const set = (k, v) => onChange({ ...person, [k]: v });
+      // Le toggle est délégué au parent (StepLBCContent) afin d'appliquer la règle métier
+      // « Chaque fonction ne peut être attribuée qu'à une seule personne » : si la fonction
+      // est déjà cochée sur une autre personne, elle est transférée automatiquement.
       const toggleFn = (fnId) => {
+        if (onToggleFn) { onToggleFn(index, fnId); return; }
         const fns = person.functions || {};
         onChange({ ...person, functions: { ...fns, [fnId]: !fns[fnId] } });
       };
 
-      // Fonctions disponibles pour cette carte = non prises par les autres + déjà prises par cette carte
-      const availableFns = LBC_FUNCTIONS.filter(fn =>
-        !assignedByOthers.includes(fn.id) || (person.functions || {})[fn.id]
-      );
+      // Les 4 fonctions sont TOUJOURS affichées pour chaque personne (développeur-friendly).
+      // La règle d'unicité est gérée côté parent via onToggleFn (transfert automatique).
+      const availableFns = LBC_FUNCTIONS;
 
       const knownPP = PREV_PP_LIST.find(p => p.label === person.selectedOption);
       const isAutre = person.selectedOption === AUTRE_PP;
@@ -4402,7 +4263,7 @@
             </div>
           )}
 
-          {/* Fonctions assumées */}
+          {/* Fonctions assumées — Checkboxes */}
           {showFields && availableFns.length > 0 && (
             <div style={{ borderTop: `1px solid ${T.color.border}`, paddingTop: '20px' }}>
               <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 14px 0' }}>
@@ -4412,17 +4273,29 @@
                 {availableFns.map(fn => {
                   const checked = !!(person.functions || {})[fn.id];
                   return (
-                    <label key={fn.id} onClick={() => toggleFn(fn.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '10px 14px', borderRadius: T.radius, border: `1px solid ${checked ? T.color.primaryBlue : T.color.border}`, background: checked ? '#F0F4FA' : T.color.white, transition: 'all 0.15s' }}>
-                      {/* Custom checkbox */}
-                      <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${checked ? T.color.primaryBlue : T.color.borderMedium}`, background: checked ? T.color.primaryBlue : T.color.white, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <label key={fn.id} onClick={() => toggleFn(fn.id)} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer',
+                      padding: '10px 14px', borderRadius: T.radius,
+                      border: `1px solid ${checked ? T.color.primaryBlue : T.color.border}`,
+                      background: checked ? '#F0F4FA' : T.color.white,
+                      transition: 'all 0.15s',
+                    }}>
+                      <div style={{
+                        width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0,
+                        border: `2px solid ${checked ? T.color.primaryBlue : T.color.borderMedium}`,
+                        background: checked ? T.color.primaryBlue : T.color.white,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
                         {checked && (
                           <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
                             <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                         )}
                       </div>
-                      <span style={{ fontSize: '14px', color: T.color.textDark, flex: 1, lineHeight: '20px' }}>{fn.label}</span>
-                      <FunctionBadge required={fn.required} />
+                      <span style={{ fontSize: '14px', color: T.color.textDark, flex: 1, lineHeight: '20px' }}>
+                        {fn.required && <span style={{ color: '#C81E1E', fontWeight: 700 }}>* </span>}
+                        {fn.label}
+                      </span>
                     </label>
                   );
                 })}
@@ -4433,7 +4306,7 @@
       );
     };
 
-    const StepLBCContent = ({ data, update, showError = false }) => {
+    const StepLBCContent = ({ data, update, showError = false, onDismissError, onTriggerError }) => {
       // persons = array of PersonneCard state objects
       const persons = (data && data.persons) ? data.persons : [
         { id: 1, selectedOption: '', functions: { lbcMembre: true, lbcResponsable: true, qualMembre: true, qualResponsable: true } }
@@ -4467,9 +4340,14 @@
 
       // Remaining unassigned functions (to show in summary)
       const unassigned = LBC_FUNCTIONS.filter(fn => !coveredFnIds.has(fn.id));
+      // Fonctions obligatoires non couvertes (pour la popup d'erreur)
+      const unassignedRequired = unassigned.filter(fn => fn.required);
 
       const addPerson = () => {
-        // Pre-check only the unassigned functions
+        // US PEP-3590, Scénario 8 : le clic sur « + Ajouter une personne pour les fonctions
+        // restantes » ajoute toujours un nouveau bloc « Personne N », avec les 4 fonctions
+        // affichées. Pré-cochage uniquement des fonctions encore non attribuées à un autre
+        // bloc (règle métier : « Chaque fonction ne peut être attribuée qu'à une seule personne »).
         const newFunctions = {};
         unassigned.forEach(fn => { newFunctions[fn.id] = true; });
         setPersons([...persons, { id: Date.now(), selectedOption: '', functions: newFunctions }]);
@@ -4484,6 +4362,25 @@
         setPersons(updated);
       };
 
+      // Toggle d'une fonction en respectant la règle « une fonction = une seule personne ».
+      // Si la fonction était déjà cochée sur une autre personne, on la lui retire (transfert).
+      const toggleFnForPerson = (personIndex, fnId) => {
+        const currentlyChecked = !!(persons[personIndex].functions || {})[fnId];
+        const updated = persons.map((p, i) => {
+          const fns = { ...(p.functions || {}) };
+          if (currentlyChecked) {
+            // Décocher sur la personne courante uniquement
+            if (i === personIndex) fns[fnId] = false;
+          } else {
+            // Cocher sur la personne courante et retirer des autres
+            if (i === personIndex) fns[fnId] = true;
+            else if (fns[fnId]) fns[fnId] = false;
+          }
+          return { ...p, functions: fns };
+        });
+        setPersons(updated);
+      };
+
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Title */}
@@ -4495,16 +4392,8 @@
               Désignez un responsable pour chacune des fonctions ci-dessous. Vous pouvez attribuer plusieurs fonctions à la même personne.
             </p>
             <p style={{ fontSize: '13px', color: T.color.gray, margin: 0 }}>
-              <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
+              <span style={{ color: T.color.gray }}>* </span>Champs obligatoires
             </p>
-          </div>
-
-          {/* Légende badges */}
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <FunctionBadge required={true} />
-            <span style={{ fontSize: '13px', color: T.color.gray }}>À désigner obligatoirement pour passer à l'étape suivante</span>
-            <FunctionBadge required={false} />
-            <span style={{ fontSize: '13px', color: T.color.gray }}>Non bloquant</span>
           </div>
 
           {/* Cartes personnes */}
@@ -4518,54 +4407,78 @@
               onRemove={() => removePerson(index)}
               canRemove={persons.length > 1}
               showError={showError}
+              onToggleFn={toggleFnForPerson}
             />
           ))}
 
-          {/* Bouton ajouter une personne — masqué si toutes les fonctions sont couvertes */}
-          {!allAssigned && (
-            <button
-              onClick={addPerson}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                background: T.color.white, border: `1px dashed ${T.color.borderMedium}`,
-                borderRadius: T.radius, padding: '14px 20px', cursor: 'pointer',
-                fontSize: '14px', fontWeight: 500, color: T.color.primaryBlue,
-                fontFamily: T.font, width: '100%', justifyContent: 'center',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = T.color.bg}
-              onMouseLeave={e => e.currentTarget.style.background = T.color.white}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 3V13M3 8H13" stroke={T.color.primaryBlue} strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-              Ajouter une personne pour les fonctions restantes
-            </button>
-          )}
+          {/* Bouton ajouter — toujours visible (standard), même si toutes les fonctions sont attribuées */}
+          <button
+            onClick={addPerson}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              background: T.color.white, border: `1px dashed ${T.color.borderMedium}`,
+              borderRadius: T.radius, padding: '14px 20px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: 500, color: T.color.primaryBlue,
+              fontFamily: T.font, width: '100%', justifyContent: 'center',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = T.color.bg}
+            onMouseLeave={e => e.currentTarget.style.background = T.color.white}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 3V13M3 8H13" stroke={T.color.primaryBlue} strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            Ajouter une personne pour les fonctions restantes
+          </button>
 
-          {/* Récapitulatif fonctions non couvertes */}
-          {unassigned.length > 0 && (
-            <div style={{ padding: '16px', background: '#FEF9EC', border: '1px solid #FDE68A', borderRadius: T.radius }}>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', margin: '0 0 8px 0' }}>
-                {unassigned.some(f => f.required) ? '⚠ Fonctions obligatoires non encore désignées' : 'Fonctions optionnelles non désignées'}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {unassigned.map(fn => (
-                  <div key={fn.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', color: '#78350F' }}>•</span>
-                    <span style={{ fontSize: '13px', color: '#78350F', flex: 1 }}>{fn.label}</span>
-                    <FunctionBadge required={fn.required} />
+          {/* Popup d'erreur : affiché après clic Suivant si des fonctions OBLIGATOIRES ne sont pas désignées */}
+          {showError && unassignedRequired.length > 0 && (
+            <>
+              {/* Overlay semi-transparent */}
+              <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0, 0, 0, 0.4)', zIndex: 999,
+              }} />
+              {/* Modal popup */}
+              <div style={{
+                position: 'fixed', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: T.color.white, borderRadius: '12px',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.25)',
+                padding: '32px', width: '480px', maxWidth: '90vw',
+                zIndex: 1000,
+              }}>
+                {/* Icône warning */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '50%',
+                    background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <path d="M10 6V10M10 14H10.01M18 10C18 14.4183 14.4183 18 10 18C5.58172 18 2 14.4183 2 10C2 5.58172 5.58172 2 10 2C14.4183 2 18 5.58172 18 10Z" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                   </div>
-                ))}
+                  <p style={{ fontSize: '15px', fontWeight: 600, color: '#991B1B', margin: 0, lineHeight: '22px' }}>
+                    Certaines fonctions obligatoires ne sont pas attribuées. Merci d'attribuer la/les fonction(s) obligatoire(s) manquante(s)
+                  </p>
+                </div>
+                {/* Bouton OK pour fermer la fenêtre */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button
+                    onClick={() => onDismissError && onDismissError()}
+                    style={{
+                      background: T.color.primaryBlue, color: T.color.white,
+                      border: 'none', borderRadius: T.radius,
+                      padding: '10px 32px', fontSize: '14px', fontWeight: 600,
+                      cursor: 'pointer', fontFamily: T.font,
+                    }}
+                  >
+                    OK
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Message d'erreur : affiché uniquement après tentative de navigation */}
-          {showError && !requiredCovered && (
-            <p style={{ margin: '0', fontSize: '13px', color: '#DC2626' }}>
-              Vous devez désigner un responsable pour chaque fonction obligatoire.
-            </p>
+            </>
           )}
 
         </div>
@@ -5586,9 +5499,9 @@
           case "Caractéristiques de la société et renseignements divers": return <Step3Content data={step3} update={updateStep3} profile={step1.profile} />;
           case "Représentants Légaux": return <Step4Content data={step4} update={updateStep4} profile={step1.profile} showError={step4Attempted} />;
           case EXTRA_STEP: return <Step5Content data={step5} update={updateStep5} profile={step1.profile} />;
-          case ADMIN_STEP: return <StepAdminContent data={stepAdmin} update={updateStepAdmin} formeJuridique={step3.formeJuridique} />;
+          case ADMIN_STEP: return <StepAdminContent data={stepAdmin} update={updateStepAdmin} formeJuridique={step3.formeJuridique} profile={step1.profile} />;
           case "Personne de contact principal": return <StepPCPContent data={stepPCP} update={updateStepPCP} />;
-          case LBC_STEP: return <StepLBCContent data={stepLBC} update={updateStepLBC} showError={lbcAttempted} />;
+          case LBC_STEP: return <StepLBCContent data={stepLBC} update={updateStepLBC} showError={lbcAttempted} onDismissError={() => setLbcAttempted(false)} onTriggerError={() => setLbcAttempted(true)} />;
           case "Liste des associés": return <StepAssociesContent pcpSelection={stepPCP?.pcp} lbcPersons={stepLBC?.persons} />;
           case "Pièces justificatives": return <StepPiecesContent data={stepPieces} update={updateStepPieces} />;
           case "Consentement et RGPD": return <StepConsentementContent data={stepConsent} update={updateStepConsent} />;

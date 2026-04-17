@@ -1935,7 +1935,9 @@
     );
 
     // ── Person Search Autocomplete ──
-    const PersonSearchAutocomplete = ({ onSelectPerson, onManual, onClear, searchMode, selectedLabel }) => {
+    const PersonSearchAutocomplete = ({ onSelectPerson, onManual, onClear, searchMode, selectedLabel, label, required }) => {
+      const displayLabel = label !== undefined ? label : 'Recherchez la personne physique';
+      const isRequired = required === undefined ? true : required;
       const [query, setQuery] = useState('');
       const [focused, setFocused] = useState(false);
       const containerRef = React.useRef(null);
@@ -1986,7 +1988,7 @@
       return (
         <div ref={containerRef} style={{ position: 'relative', marginBottom: '16px' }}>
           <p style={{ fontSize: '14px', fontWeight: 500, color: T.color.textDark, margin: '0 0 6px 0' }}>
-            <span style={{ color: '#C81E1E' }}>* </span>Recherchez la personne physique
+            {isRequired && <span style={{ color: '#C81E1E' }}>* </span>}{displayLabel}
           </p>
           <div style={{
             display: 'flex', alignItems: 'center',
@@ -5021,6 +5023,349 @@
       { nom: 'PM3', fonction: 'Associé',                       capPpNb: '500',   capPpPct: '5,00%',  capNpNb: '',      capNpPct: '',        capUsNb: '',      capUsPct: '',       votePpNb: '500',    votePpPct: '3,03%',  voteNpNb: '',      voteNpPct: '',       voteUsNb: '',      voteUsPct: '',      type: 'nonec' },
     ];
 
+    // ============================================================
+    // STEP — Liste des bénéficiaires effectifs
+    // ============================================================
+    const StepBeneficiairesContent = () => {
+      const emptyBeneficiaire = {
+        searchMode: undefined, // undefined | 'selected' | 'manual'
+        searchLabel: '',
+        civilite: '',
+        nom: '',
+        prenom: '',
+        prenom2: '',
+        prenom3: '',
+        prenom4: '',
+        dateNaissance: '',
+        lieuNaissance: '',
+        nationalite: '',
+        rue: '',
+        complement: '',
+        lieuDit: '',
+        codePostal: '',
+        ville: '',
+        pays: '',
+      };
+
+      // Par défaut : choix = 'Oui' → on affiche directement un bloc vide à remplir
+      const [choix, setChoix] = useState('Oui');
+      const [beneficiairesAjoutes, setBeneficiairesAjoutes] = useState([{ ...emptyBeneficiaire }]);
+
+      const beneficiaires = [
+        'Monsieur DUPONT Jean',
+        'Madame DURAND Marie',
+      ];
+
+      const handleChoix = (value) => {
+        setChoix(value);
+        if (value === 'Oui') {
+          // Oui → on ouvre automatiquement un bloc si la liste est vide
+          if (beneficiairesAjoutes.length === 0) {
+            setBeneficiairesAjoutes([{ ...emptyBeneficiaire }]);
+          }
+        } else {
+          // Non → on masque / vide tous les blocs ouverts
+          setBeneficiairesAjoutes([]);
+        }
+      };
+
+      const handleAddBeneficiaire = () => {
+        setBeneficiairesAjoutes([...beneficiairesAjoutes, { ...emptyBeneficiaire }]);
+      };
+
+      const updateBeneficiaire = (idx, key, value) => {
+        const next = [...beneficiairesAjoutes];
+        next[idx] = { ...next[idx], [key]: value };
+        setBeneficiairesAjoutes(next);
+      };
+
+      const patchBeneficiaire = (idx, patch) => {
+        const next = [...beneficiairesAjoutes];
+        next[idx] = { ...next[idx], ...patch };
+        setBeneficiairesAjoutes(next);
+      };
+
+      const removeBeneficiaire = (idx) => {
+        setBeneficiairesAjoutes(beneficiairesAjoutes.filter((_, i) => i !== idx));
+      };
+
+      const handleSelectPerson = (idx, person) => {
+        patchBeneficiaire(idx, {
+          searchMode: 'selected',
+          searchLabel: `${person.civilite} ${person.nom} ${person.prenom} - ${person.region}`,
+          civilite: person.civilite,
+          nom: person.nom,
+          prenom: person.prenom,
+          prenom2: person.prenom2 || '',
+          prenom3: person.prenom3 || '',
+          prenom4: person.prenom4 || '',
+        });
+      };
+
+      const handleManual = (idx) => {
+        patchBeneficiaire(idx, {
+          searchMode: 'manual',
+          searchLabel: '+ Renseignez manuellement',
+          civilite: '', nom: '', prenom: '',
+          prenom2: '', prenom3: '', prenom4: '',
+          dateNaissance: '', lieuNaissance: '', nationalite: '',
+          rue: '', complement: '', lieuDit: '',
+          codePostal: '', ville: '', pays: '',
+        });
+      };
+
+      const handleClear = (idx) => {
+        patchBeneficiaire(idx, {
+          searchMode: undefined,
+          searchLabel: '',
+          civilite: '', nom: '', prenom: '',
+          prenom2: '', prenom3: '', prenom4: '',
+          dateNaissance: '', lieuNaissance: '', nationalite: '',
+          rue: '', complement: '', lieuDit: '',
+          codePostal: '', ville: '', pays: '',
+        });
+      };
+
+      const Radio = ({ selected, label, onClick }) => (
+        <label onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <div style={{
+            width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+            border: `2px solid ${selected ? T.color.primaryBlue : T.color.borderMedium}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: T.color.white,
+          }}>
+            {selected && (
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: T.color.primaryBlue }} />
+            )}
+          </div>
+          <span style={{ fontSize: '14px', color: T.color.textDark, fontFamily: T.font }}>{label}</span>
+        </label>
+      );
+
+      return (
+        <div>
+          {/* Step header */}
+          <div style={{ marginBottom: '32px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, color: T.color.textDark, margin: '0 0 8px 0', lineHeight: '28.8px' }}>
+              Liste des bénéficiaires effectifs
+            </h1>
+            <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 4px 0' }}>
+              Identifiez les bénéficiaires effectifs de la société en cours d'inscription.
+            </p>
+            <p style={{ fontSize: '13px', color: T.color.gray, margin: 0 }}>
+              <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
+            </p>
+          </div>
+
+          {/* Card 1 : récapitulatif + question Oui/Non + bouton Ajouter */}
+          <div style={{
+            background: T.color.white,
+            border: `1px solid ${T.color.border}`,
+            borderRadius: T.radius,
+            boxShadow: T.shadow.card,
+            padding: '28px',
+            marginBottom: '32px',
+            fontFamily: T.font,
+          }}>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 4px' }}>
+              Liste récapitulative des bénéficiaires effectifs déclarés précédemment dans ce formulaire.
+            </p>
+            <p style={{ fontSize: '13px', color: T.color.gray, margin: '0 0 16px' }}>
+              Le bénéficiaire effectif est défini aux articles R561-1 et R561-3 du code monétaire et financier.
+            </p>
+
+            <div style={{
+              border: `1px solid ${T.color.border}`,
+              borderRadius: T.radius,
+              overflow: 'hidden',
+              marginBottom: '24px',
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ background: T.color.radioBg }}>
+                    <th style={{
+                      padding: '10px 16px',
+                      textAlign: 'left',
+                      fontWeight: 600,
+                      color: T.color.textDark,
+                      borderBottom: `1px solid ${T.color.border}`,
+                    }}>
+                      Bénéficiaire effectif
+                    </th>
+                    <th style={{
+                      padding: '10px 16px',
+                      width: '80px',
+                      borderBottom: `1px solid ${T.color.border}`,
+                    }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {beneficiaires.map((nom, idx) => (
+                    <tr key={idx} style={{
+                      borderBottom: idx === beneficiaires.length - 1 ? 'none' : `1px solid ${T.color.border}`,
+                      background: T.color.white,
+                    }}>
+                      <td style={{ padding: '12px 16px', color: T.color.textDark }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>{nom}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginBottom: '4px' }}>
+              <p style={{ fontSize: '14px', color: T.color.textDark, margin: '0 0 8px', lineHeight: '21px' }}>
+                <span style={{ color: '#C81E1E' }}>* </span>
+                Avez-vous des bénéficiaires effectifs à déclarer, hors ceux listés ci-dessus ?
+              </p>
+              <div style={{ display: 'flex', gap: '24px' }}>
+                <Radio selected={choix === 'Oui'} label="Oui" onClick={() => handleChoix('Oui')} />
+                <Radio selected={choix === 'Non'} label="Non" onClick={() => handleChoix('Non')} />
+              </div>
+            </div>
+          </div>
+
+          {/* Carte(s) : formulaire de saisie d'un bénéficiaire effectif */}
+          {beneficiairesAjoutes.map((b, idx) => {
+            const isSelected = b.searchMode === 'selected';
+            const isManual   = b.searchMode === 'manual';
+            const showFields = isSelected || isManual;
+
+            return (
+              <SectionCard key={idx}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                  <SectionTitle>
+                    <span style={{ marginRight: '8px' }}>▾</span>
+                    Complétez les informations sur le bénéficiaire effectif
+                  </SectionTitle>
+                  <button onClick={() => removeBeneficiaire(idx)} style={{
+                    background: 'none', border: `1px solid ${T.color.border}`, borderRadius: T.radius,
+                    padding: '6px 16px', fontSize: '14px', color: T.color.primaryRed,
+                    cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
+                  }}>Supprimer</button>
+                </div>
+
+                {/* Recherche autocomplete (label "Recherchez", sans astérisque) */}
+                <PersonSearchAutocomplete
+                  label="Recherchez"
+                  required={false}
+                  searchMode={b.searchMode}
+                  selectedLabel={b.searchLabel}
+                  onSelectPerson={(person) => handleSelectPerson(idx, person)}
+                  onManual={() => handleManual(idx)}
+                  onClear={() => handleClear(idx)}
+                />
+
+                {/* Les champs n'apparaissent qu'après sélection ou choix "Renseignez manuellement" */}
+                {showFields && (
+                  <>
+                    {/* Civilité — non modifiable si mode sélection, éditable si mode manuel */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 8px 0' }}>
+                        <span style={{ color: '#C81E1E' }}>* </span>Civilité
+                      </p>
+                      <div style={{ display: 'flex', gap: '24px' }}>
+                        {CIVILITE_OPTIONS.map(opt => {
+                          const sel = b.civilite === opt;
+                          return (
+                            <label key={opt} onClick={isManual ? () => updateBeneficiaire(idx, 'civilite', opt) : undefined} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: isManual ? 'pointer' : 'default' }}>
+                              <div style={{
+                                width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                                border: `2px solid ${sel ? T.color.primaryBlue : T.color.borderMedium}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: isSelected ? T.color.radioBg : T.color.white,
+                              }}>
+                                {sel && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: T.color.primaryBlue }} />}
+                              </div>
+                              <span style={{ fontSize: '14px', color: T.color.textDark }}>{opt}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {isSelected ? (
+                      <>
+                        {/* Mode sélection : champs en lecture seule (grisés) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <ReadOnlyField label="Nom de famille" required value={b.nom} />
+                          <ReadOnlyField label="Prénom" required value={b.prenom} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <ReadOnlyField label="Prénom 2" value={b.prenom2} />
+                          <ReadOnlyField label="Prénom 3" value={b.prenom3} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <ReadOnlyField label="Prénom 4" value={b.prenom4} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Mode manuel : champs éditables */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <FieldInput label="Nom de famille" required value={b.nom} onChange={v => updateBeneficiaire(idx, 'nom', v)} />
+                          <FieldInput label="Prénom" required value={b.prenom} onChange={v => updateBeneficiaire(idx, 'prenom', v)} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <FieldInput label="Prénom 2" value={b.prenom2} onChange={v => updateBeneficiaire(idx, 'prenom2', v)} />
+                          <FieldInput label="Prénom 3" value={b.prenom3} onChange={v => updateBeneficiaire(idx, 'prenom3', v)} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <FieldInput label="Prénom 4" value={b.prenom4} onChange={v => updateBeneficiaire(idx, 'prenom4', v)} />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Date / Lieu de naissance / Nationalité — toujours éditables (ne viennent pas de la recherche) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: T.color.textDark }}>
+                          <span style={{ color: '#C81E1E', marginRight: '3px' }}>*</span>Date de naissance
+                        </label>
+                        <DatePicker value={b.dateNaissance} onChange={v => updateBeneficiaire(idx, 'dateNaissance', v)} />
+                      </div>
+                      <FieldInput label="Lieu de naissance" required value={b.lieuNaissance} onChange={v => updateBeneficiaire(idx, 'lieuNaissance', v)} placeholder="Saisissez une ville ou un pays" />
+                      <FieldSelect label="Nationalité" required value={b.nationalite} onChange={v => updateBeneficiaire(idx, 'nationalite', v)} options={PAYS_OPTIONS} placeholder="Sélectionnez" />
+                    </div>
+
+                    {/* Adresse */}
+                    <AddressBlock
+                      data={b}
+                      onChange={(k, v) => updateBeneficiaire(idx, k, v)}
+                    />
+                  </>
+                )}
+              </SectionCard>
+            );
+          })}
+
+          {/* Bouton "+ Ajouter" — affiché uniquement quand choix === 'Oui' */}
+          {choix === 'Oui' && (
+            <div style={{ marginBottom: '32px' }}>
+              <button onClick={handleAddBeneficiaire} style={{
+                background: 'none',
+                border: `1px solid ${T.color.border}`,
+                borderRadius: T.radius,
+                padding: '8px 20px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: T.color.primaryBlue,
+                fontFamily: T.font,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}>
+                + Ajouter un bénéficiaire effectif
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    };
+
     const StepAssociesContent = ({ pcpSelection, lbcPersons }) => {
       const [drawerOpen, setDrawerOpen]     = useState(false);
       const [addedAssocies, setAddedAssocies] = useState([]);
@@ -5505,6 +5850,7 @@
           case "Personne de contact principal": return <StepPCPContent data={stepPCP} update={updateStepPCP} />;
           case LBC_STEP: return <StepLBCContent data={stepLBC} update={updateStepLBC} showError={lbcAttempted} onDismissError={() => setLbcAttempted(false)} onTriggerError={() => setLbcAttempted(true)} />;
           case "Liste des associés": return <StepAssociesContent pcpSelection={stepPCP?.pcp} lbcPersons={stepLBC?.persons} />;
+          case "Liste des bénéficiaires effectifs": return <StepBeneficiairesContent />;
           case "Pièces justificatives": return <StepPiecesContent data={stepPieces} update={updateStepPieces} />;
           case "Consentement et RGPD": return <StepConsentementContent data={stepConsent} update={updateStepConsent} />;
           default: return (

@@ -1935,9 +1935,10 @@
     );
 
     // ── Person Search Autocomplete ──
-    const PersonSearchAutocomplete = ({ onSelectPerson, onManual, onClear, searchMode, selectedLabel, label, required }) => {
+    const PersonSearchAutocomplete = ({ onSelectPerson, onManual, onClear, searchMode, selectedLabel, label, required, regionField }) => {
       const displayLabel = label !== undefined ? label : 'Recherchez la personne physique';
       const isRequired = required === undefined ? true : required;
+      const regKey = regionField || 'region'; // champ utilisé pour l'affichage région dans le dropdown
       const [query, setQuery] = useState('');
       const [focused, setFocused] = useState(false);
       const containerRef = React.useRef(null);
@@ -2031,7 +2032,7 @@
                 onMouseEnter={e => e.currentTarget.style.background = T.color.radioBg}
                 onMouseLeave={e => e.currentTarget.style.background = T.color.white}
                 >
-                  {p.civilite} {p.nom} {p.prenom} - {p.region}
+                  {p.civilite} {p.nom} {p.prenom} - {p[regKey]}
                 </div>
               ))}
               <div onClick={handleManual} style={{
@@ -5036,6 +5037,7 @@
         prenom2: '',
         prenom3: '',
         prenom4: '',
+        conseilRegional: '',
         dateNaissance: '',
         lieuNaissance: '',
         nationalite: '',
@@ -5090,15 +5092,17 @@
       };
 
       const handleSelectPerson = (idx, person) => {
+        // Format demandé : "Civilité NOM Prénom - CROEC d'inscription principale"
         patchBeneficiaire(idx, {
           searchMode: 'selected',
-          searchLabel: `${person.civilite} ${person.nom} ${person.prenom} - ${person.region}`,
+          searchLabel: `${person.civilite} ${person.nom} ${person.prenom} - ${person.conseilRegional}`,
           civilite: person.civilite,
           nom: person.nom,
           prenom: person.prenom,
           prenom2: person.prenom2 || '',
           prenom3: person.prenom3 || '',
           prenom4: person.prenom4 || '',
+          conseilRegional: person.conseilRegional || '',
         });
       };
 
@@ -5108,6 +5112,7 @@
           searchLabel: '+ Renseignez manuellement',
           civilite: '', nom: '', prenom: '',
           prenom2: '', prenom3: '', prenom4: '',
+          conseilRegional: '',
           dateNaissance: '', lieuNaissance: '', nationalite: '',
           rue: '', complement: '', lieuDit: '',
           codePostal: '', ville: '', pays: '',
@@ -5120,6 +5125,7 @@
           searchLabel: '',
           civilite: '', nom: '', prenom: '',
           prenom2: '', prenom3: '', prenom4: '',
+          conseilRegional: '',
           dateNaissance: '', lieuNaissance: '', nationalite: '',
           rue: '', complement: '', lieuDit: '',
           codePostal: '', ville: '', pays: '',
@@ -5247,10 +5253,11 @@
                   }}>Supprimer</button>
                 </div>
 
-                {/* Recherche autocomplete (label "Recherchez", sans astérisque) */}
+                {/* Recherche autocomplete (label spécifique à l'étape bénéficiaires) */}
                 <PersonSearchAutocomplete
-                  label="Recherchez"
+                  label="Recherchez le bénéficiaire effectif"
                   required={false}
+                  regionField="conseilRegional"
                   searchMode={b.searchMode}
                   selectedLabel={b.searchLabel}
                   onSelectPerson={(person) => handleSelectPerson(idx, person)}
@@ -5288,53 +5295,53 @@
 
                     {isSelected ? (
                       <>
-                        {/* Mode sélection : champs en lecture seule (grisés) */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                        {/* Mode sélection (Scénario 6) : noms en lecture seule 3 colonnes */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                           <ReadOnlyField label="Nom de famille" required value={b.nom} />
                           <ReadOnlyField label="Prénom" required value={b.prenom} />
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                           <ReadOnlyField label="Prénom 2" value={b.prenom2} />
-                          <ReadOnlyField label="Prénom 3" value={b.prenom3} />
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <ReadOnlyField label="Prénom 3" value={b.prenom3} />
                           <ReadOnlyField label="Prénom 4" value={b.prenom4} />
+                        </div>
+                        {/* Conseil régional d'inscription principale — lecture seule, pleine largeur */}
+                        <div style={{ marginBottom: '16px' }}>
+                          <ReadOnlyField label="Conseil régional d'inscription principale" required value={b.conseilRegional} />
                         </div>
                       </>
                     ) : (
                       <>
-                        {/* Mode manuel : champs éditables */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                        {/* Mode manuel (Scénario 7) : noms éditables 3 colonnes */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                           <FieldInput label="Nom de famille" required value={b.nom} onChange={v => updateBeneficiaire(idx, 'nom', v)} />
                           <FieldInput label="Prénom" required value={b.prenom} onChange={v => updateBeneficiaire(idx, 'prenom', v)} />
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                           <FieldInput label="Prénom 2" value={b.prenom2} onChange={v => updateBeneficiaire(idx, 'prenom2', v)} />
-                          <FieldInput label="Prénom 3" value={b.prenom3} onChange={v => updateBeneficiaire(idx, 'prenom3', v)} />
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <FieldInput label="Prénom 3" value={b.prenom3} onChange={v => updateBeneficiaire(idx, 'prenom3', v)} />
                           <FieldInput label="Prénom 4" value={b.prenom4} onChange={v => updateBeneficiaire(idx, 'prenom4', v)} />
                         </div>
+
+                        {/* Date / Lieu de naissance / Nationalité — uniquement en mode manuel */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: T.color.textDark }}>
+                              <span style={{ color: '#C81E1E', marginRight: '3px' }}>*</span>Date de naissance
+                            </label>
+                            <DatePicker value={b.dateNaissance} onChange={v => updateBeneficiaire(idx, 'dateNaissance', v)} />
+                          </div>
+                          <FieldInput label="Lieu de naissance" required value={b.lieuNaissance} onChange={v => updateBeneficiaire(idx, 'lieuNaissance', v)} placeholder="Saisissez une ville ou un pays" />
+                          <FieldSelect label="Nationalité" required value={b.nationalite} onChange={v => updateBeneficiaire(idx, 'nationalite', v)} options={PAYS_OPTIONS} placeholder="Sélectionnez" />
+                        </div>
+
+                        {/* Adresse — uniquement en mode manuel */}
+                        <AddressBlock
+                          data={b}
+                          onChange={(k, v) => updateBeneficiaire(idx, k, v)}
+                        />
                       </>
                     )}
-
-                    {/* Date / Lieu de naissance / Nationalité — toujours éditables (ne viennent pas de la recherche) */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: T.color.textDark }}>
-                          <span style={{ color: '#C81E1E', marginRight: '3px' }}>*</span>Date de naissance
-                        </label>
-                        <DatePicker value={b.dateNaissance} onChange={v => updateBeneficiaire(idx, 'dateNaissance', v)} />
-                      </div>
-                      <FieldInput label="Lieu de naissance" required value={b.lieuNaissance} onChange={v => updateBeneficiaire(idx, 'lieuNaissance', v)} placeholder="Saisissez une ville ou un pays" />
-                      <FieldSelect label="Nationalité" required value={b.nationalite} onChange={v => updateBeneficiaire(idx, 'nationalite', v)} options={PAYS_OPTIONS} placeholder="Sélectionnez" />
-                    </div>
-
-                    {/* Adresse */}
-                    <AddressBlock
-                      data={b}
-                      onChange={(k, v) => updateBeneficiaire(idx, k, v)}
-                    />
                   </>
                 )}
               </SectionCard>
@@ -5364,6 +5371,277 @@
           )}
         </div>
       );
+    };
+
+    // ============================================================
+    // STEP — Responsable ordinal
+    // ============================================================
+    const RESPONSABLE_SITUATIONS = [
+      { id: 'representant', label: 'Est représentant légal de la SPE' },
+      { id: 'associe',      label: 'Est associé de la SPE' },
+      { id: 'salarie',      label: 'Est salarié de la SPE' },
+    ];
+
+    // Listes mock : responsables potentiels selon la situation.
+    // Format { value, label } : la value est l'identifiant utilisé par le <select>,
+    // le label est le texte affiché à l'utilisateur.
+    const RESPONSABLE_OPTIONS_REP = [
+      { value: 'dupont-jean',   label: 'M. DUPONT Jean' },
+      { value: 'martin-pierre', label: 'M. MARTIN Pierre' },
+    ];
+    const RESPONSABLE_OPTIONS_ASS = [
+      { value: 'dupont-jean',   label: 'M. DUPONT Jean' },
+      { value: 'martin-pierre', label: 'M. MARTIN Pierre' },
+    ];
+
+    const StepResponsableOrdinalContent = ({ data, update }) => {
+      const d = data || {};
+      const u = (k, v) => update(k, v);
+
+      const situation = d.situation;                  // 'representant' | 'associe' | 'salarie'
+      const salarieMode = d.salarieSearchMode;        // undefined | 'selected' | 'manual'
+      const isSelected = salarieMode === 'selected';
+      const isManual   = salarieMode === 'manual';
+      const showSalarieFields = isSelected || isManual;
+
+      // Options disponibles dans la picklist selon la situation
+      const responsableOptions = situation === 'representant'
+        ? RESPONSABLE_OPTIONS_REP
+        : situation === 'associe'
+          ? RESPONSABLE_OPTIONS_ASS
+          : [];
+
+      const handleSelectSituation = (id) => {
+        // Change de situation → reset des champs liés à la précédente
+        u('situation', id);
+        u('responsable', '');
+        u('salarieSearchMode', undefined);
+        u('salarieSearchLabel', '');
+        u('salarieCivilite', '');
+        u('salarieNom', '');
+        u('salariePrenom', '');
+        u('salariePrenom2', '');
+        u('salariePrenom3', '');
+        u('salariePrenom4', '');
+        u('salarieRue', ''); u('salarieComplement', ''); u('salarieLieuDit', '');
+        u('salarieCodePostal', ''); u('salarieVille', ''); u('salariePays', '');
+        u('salarieConseilRegional', '');
+        // demandeInscription est spécifique à l'option salarié : on reset à la valeur par défaut
+        u('demandeInscription', id === 'salarie' ? 'Non' : undefined);
+      };
+
+      const handleSelectPerson = (person) => {
+        u('salarieSearchMode', 'selected');
+        u('salarieSearchLabel', `${person.civilite} ${person.nom} ${person.prenom} - ${person.region}`);
+        u('salarieCivilite', person.civilite);
+        u('salarieNom', person.nom);
+        u('salariePrenom', person.prenom);
+        u('salariePrenom2', person.prenom2 || '');
+        u('salariePrenom3', person.prenom3 || '');
+        u('salariePrenom4', person.prenom4 || '');
+        u('salarieConseilRegional', person.conseilRegional || '');
+      };
+
+      const handleManual = () => {
+        u('salarieSearchMode', 'manual');
+        u('salarieSearchLabel', '+ Renseignez manuellement');
+        u('salarieCivilite', '');
+        u('salarieNom', ''); u('salariePrenom', '');
+        u('salariePrenom2', ''); u('salariePrenom3', ''); u('salariePrenom4', '');
+        u('salarieRue', ''); u('salarieComplement', ''); u('salarieLieuDit', '');
+        u('salarieCodePostal', ''); u('salarieVille', ''); u('salariePays', '');
+        u('salarieConseilRegional', '');
+      };
+
+      const handleClear = () => {
+        u('salarieSearchMode', undefined);
+        u('salarieSearchLabel', '');
+        u('salarieCivilite', '');
+        u('salarieNom', ''); u('salariePrenom', '');
+        u('salariePrenom2', ''); u('salariePrenom3', ''); u('salariePrenom4', '');
+        u('salarieRue', ''); u('salarieComplement', ''); u('salarieLieuDit', '');
+        u('salarieCodePostal', ''); u('salarieVille', ''); u('salariePays', '');
+        u('salarieConseilRegional', '');
+      };
+
+      // Pour AddressBlock : on utilise un préfixe "salarie"
+      const salarieAddrData = {
+        salarieRue: d.salarieRue, salarieComplement: d.salarieComplement, salarieLieuDit: d.salarieLieuDit,
+        salarieCodePostal: d.salarieCodePostal, salarieVille: d.salarieVille, salariePays: d.salariePays,
+      };
+
+      return (
+        <div>
+          {/* Step header */}
+          <div style={{ marginBottom: '32px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, color: T.color.textDark, margin: '0 0 8px 0', lineHeight: '28.8px' }}>
+              Responsable ordinal
+            </h1>
+            <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 4px 0', lineHeight: '21px' }}>
+              Un responsable ordinal expert-comptable exerçant au siège social de la SPE doit être désigné. Il doit s'agir d'un expert-comptable représentant légal de la SPE ou d'un associé et/ou salarié et exerçant. Des attestations d'engagement de responsabilité ordinale correspondantes, qui doivent être téléversées dûment complétées et signées, sont disponibles en fin de formulaire.
+            </p>
+            <p style={{ fontSize: '13px', color: T.color.gray, margin: 0 }}>
+              <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
+            </p>
+          </div>
+
+          <SectionCard>
+            {/* Radios : Précisez la situation */}
+            <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 12px' }}>
+              <span style={{ color: '#C81E1E' }}>* </span>Précisez la situation du responsable ordinal :
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              {RESPONSABLE_SITUATIONS.map(opt => {
+                const selected = situation === opt.id;
+                return (
+                  <label key={opt.id} onClick={() => handleSelectSituation(opt.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                    <div style={{
+                      width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                      border: `2px solid ${selected ? T.color.primaryBlue : T.color.borderMedium}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: T.color.white,
+                    }}>
+                      {selected && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: T.color.primaryBlue }} />}
+                    </div>
+                    <span style={{ fontSize: '14px', color: T.color.textDark }}>{opt.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Représentant / Associé : picklist */}
+            {(situation === 'representant' || situation === 'associe') && (
+              <div style={{ marginBottom: '24px' }}>
+                <FieldSelect
+                  label="Sélectionnez le responsable ordinal"
+                  required
+                  value={d.responsable}
+                  onChange={v => u('responsable', v)}
+                  options={responsableOptions}
+                  placeholder="Sélectionnez"
+                />
+              </div>
+            )}
+
+            {/* Salarié : autocomplete + formulaire complet */}
+            {situation === 'salarie' && (
+              <div style={{ marginBottom: '24px' }}>
+                <PersonSearchAutocomplete
+                  searchMode={salarieMode}
+                  selectedLabel={d.salarieSearchLabel}
+                  onSelectPerson={handleSelectPerson}
+                  onManual={handleManual}
+                  onClear={handleClear}
+                />
+
+                {showSalarieFields && (
+                  <div style={{ borderTop: `1px solid ${T.color.border}`, paddingTop: '20px', marginTop: '8px' }}>
+                    {/* Civilité */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: T.color.textDark, margin: '0 0 8px' }}>
+                        <span style={{ color: '#C81E1E' }}>* </span>Civilité
+                      </p>
+                      <div style={{ display: 'flex', gap: '24px' }}>
+                        {CIVILITE_OPTIONS.map(opt => {
+                          const sel = d.salarieCivilite === opt;
+                          return (
+                            <label key={opt} onClick={isManual ? () => u('salarieCivilite', opt) : undefined} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: isManual ? 'pointer' : 'default' }}>
+                              <div style={{
+                                width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                                border: `2px solid ${sel ? T.color.primaryBlue : T.color.borderMedium}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: isSelected ? T.color.radioBg : T.color.white,
+                              }}>
+                                {sel && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: T.color.primaryBlue }} />}
+                              </div>
+                              <span style={{ fontSize: '14px', color: T.color.textDark }}>{opt}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Nom / Prénom / Prénom 2 */}
+                    {isSelected ? (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <ReadOnlyField label="Nom de famille" required value={d.salarieNom} />
+                          <ReadOnlyField label="Prénom" required value={d.salariePrenom} />
+                          <ReadOnlyField label="Prénom 2" value={d.salariePrenom2} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <ReadOnlyField label="Prénom 3" value={d.salariePrenom3} />
+                          <ReadOnlyField label="Prénom 4" value={d.salariePrenom4} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <FieldInput label="Nom de famille" required value={d.salarieNom} onChange={v => u('salarieNom', v)} />
+                          <FieldInput label="Prénom" required value={d.salariePrenom} onChange={v => u('salariePrenom', v)} />
+                          <FieldInput label="Prénom 2" value={d.salariePrenom2} onChange={v => u('salariePrenom2', v)} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <FieldInput label="Prénom 3" value={d.salariePrenom3} onChange={v => u('salariePrenom3', v)} />
+                          <FieldInput label="Prénom 4" value={d.salariePrenom4} onChange={v => u('salariePrenom4', v)} />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Adresse professionnelle */}
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: T.color.gray, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Adresse professionnelle de l'inscription principale
+                    </p>
+                    <AddressBlock
+                      data={salarieAddrData}
+                      onChange={(k, v) => u(k, v)}
+                      prefix="salarie"
+                      noRequired
+                    />
+
+                    {/* Conseil régional d'inscription en cours */}
+                    <div style={{ marginBottom: '16px' }}>
+                      {isSelected
+                        ? <ReadOnlyField label="Conseil régional d'inscription en cours" value={d.salarieConseilRegional} />
+                        : <FieldInput label="Conseil régional d'inscription en cours" value={d.salarieConseilRegional} onChange={v => u('salarieConseilRegional', v)} />
+                      }
+                    </div>
+                  </div>
+                )}
+
+                {/* Question visible uniquement pour l'option « Est salarié de la SPE », à la fin du bloc */}
+                <OuiNon
+                  label="Ce responsable ordinal a-t-il déposé une demande personnelle d'inscription au titre du siège social de la SPE ?"
+                  required
+                  value={d.demandeInscription}
+                  onChange={v => u('demandeInscription', v)}
+                />
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      );
+    };
+
+    // Validation : l'utilisateur ne peut passer à l'étape suivante que si
+    // la situation est choisie ET le responsable identifié.
+    // Pour l'option « Est salarié de la SPE », la question « demande personnelle
+    // d'inscription » doit également avoir reçu une réponse Oui ou Non.
+    const isStepResponsableValid = (d) => {
+      if (!d || !d.situation) return false;
+      if (d.situation === 'representant' || d.situation === 'associe') {
+        return !!d.responsable;
+      }
+      if (d.situation === 'salarie') {
+        const mode = d.salarieSearchMode;
+        if (!mode) return false;
+        const identityOK = mode === 'selected'
+          ? !!d.salarieNom && !!d.salariePrenom
+          : !!d.salarieCivilite && !!d.salarieNom && !!d.salariePrenom;
+        if (!identityOK) return false;
+        return d.demandeInscription === 'Oui' || d.demandeInscription === 'Non';
+      }
+      return false;
     };
 
     const StepAssociesContent = ({ pcpSelection, lbcPersons }) => {
@@ -5751,8 +6029,13 @@
       const [stepConsent, setStepConsent] = useState({});
       const [stepPieces, setStepPieces] = useState({});
       const [stepAdmin, setStepAdmin] = useState({});
+      const [stepResponsable, setStepResponsable] = useState({ demandeInscription: 'Non' });
       const [step4Attempted, setStep4Attempted] = useState(false);
       const [lbcAttempted, setLbcAttempted] = useState(false);
+
+      const updateStepResponsable = useCallback((key, value) => {
+        setStepResponsable(prev => ({ ...prev, [key]: typeof value === 'function' ? value(prev[key]) : value }));
+      }, []);
 
       const updateStep1 = useCallback((path, value) => {
         setStep1(prev => {
@@ -5851,6 +6134,7 @@
           case LBC_STEP: return <StepLBCContent data={stepLBC} update={updateStepLBC} showError={lbcAttempted} onDismissError={() => setLbcAttempted(false)} onTriggerError={() => setLbcAttempted(true)} />;
           case "Liste des associés": return <StepAssociesContent pcpSelection={stepPCP?.pcp} lbcPersons={stepLBC?.persons} />;
           case "Liste des bénéficiaires effectifs": return <StepBeneficiairesContent />;
+          case "Responsable ordinal": return <StepResponsableOrdinalContent data={stepResponsable} update={updateStepResponsable} />;
           case "Pièces justificatives": return <StepPiecesContent data={stepPieces} update={updateStepPieces} />;
           case "Consentement et RGPD": return <StepConsentementContent data={stepConsent} update={updateStepConsent} />;
           default: return (
@@ -5864,7 +6148,12 @@
         }
       };
 
-      const canNext = true;
+      // canNext : bloque uniquement sur l'étape "Responsable ordinal" si le formulaire n'est pas complet.
+      // Les autres étapes conservent le comportement existant (validation au clic via goNext).
+      const currentStepName = steps[currentStep - 1];
+      const canNext = currentStepName === "Responsable ordinal"
+        ? isStepResponsableValid(stepResponsable)
+        : true;
 
       return (
         <div style={{ minHeight: '100vh', background: T.color.bg }}>

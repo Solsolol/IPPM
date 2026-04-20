@@ -3951,11 +3951,8 @@
             <h2 style={{ fontSize: '24px', fontWeight: 700, color: T.color.textDark, margin: '0 0 8px 0', lineHeight: '36px' }}>
               Administrateurs / membres du directoire / membres du conseil de surveillance
             </h2>
-            <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 8px 0', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '14px', color: T.color.gray, margin: '0', lineHeight: 1.5 }}>
               Déclarez les administrateurs, membres du directoire, membres du conseil de surveillance hors représentants et personne de contact principal déjà déclarés plus haut.
-            </p>
-            <p style={{ fontSize: '13px', color: T.color.gray, margin: '0' }}>
-              <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
             </p>
           </div>
 
@@ -3990,8 +3987,11 @@
                     cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
                   }}>Ajouter</button>
                 </div>
-                <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 16px 0' }}>
+                <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 4px 0' }}>
                   Complétez les informations pour chaque personne
+                </p>
+                <p style={{ fontSize: '13px', color: T.color.gray, margin: '0 0 16px 0' }}>
+                  <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
                 </p>
                 {adminsPP.map((admin, idx) => (
                   <AdminPPCard
@@ -4034,8 +4034,11 @@
                     cursor: 'pointer', fontFamily: T.font, fontWeight: 500,
                   }}>Ajouter</button>
                 </div>
-                <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 16px 0' }}>
+                <p style={{ fontSize: '14px', color: T.color.gray, margin: '0 0 4px 0' }}>
                   Complétez les informations pour chaque société
+                </p>
+                <p style={{ fontSize: '13px', color: T.color.gray, margin: '0 0 16px 0' }}>
+                  <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
                 </p>
                 {adminsPM.map((admin, idx) => (
                   <AdminPMCard

@@ -168,8 +168,7 @@
       "Liste des bénéficiaires effectifs",
       "Responsable ordinal",
       "Pièces justificatives",
-      "Consentement et RGPD",
-      "Confirmation et soumission",
+      "RGPD et confirmation de soumission",
     ];
 
     const EXTRA_STEP = "Représentant légal personne physique du représentant légal personne morale";
@@ -319,7 +318,7 @@
     // ============================================================
     // BOTTOM BAR
     // ============================================================
-    const BottomBar = ({ canNext, onNext, onPrev, onSave, showPrev, showSave = true }) => (
+    const BottomBar = ({ canNext, onNext, onPrev, onSave, showPrev, showSave = true, isLastStep = false }) => (
       <div style={{
         position: 'fixed',
         bottom: 0,
@@ -373,7 +372,7 @@
             disabled={!canNext}
             style={{
               height: '40px',
-              width: '237px',
+              width: isLastStep ? '260px' : '237px',
               border: 'none',
               borderRadius: T.radius,
               background: canNext ? T.color.primaryBlue : T.color.gray,
@@ -389,10 +388,21 @@
               transition: 'background 0.2s',
             }}
           >
-            Suivant
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
+            {isLastStep ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Soumettre le formulaire
+              </>
+            ) : (
+              <>
+                Suivant
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -4660,7 +4670,7 @@
       );
     };
 
-    // Step: Consentement et RGPD
+    // Step: RGPD et confirmation de soumission
     // ============================================================
     const StepConsentementContent = ({ data, update }) => {
       const d = data || {};
@@ -4668,31 +4678,44 @@
       const engagementChecked = !!d.engagement;
       const rgpdChecked       = !!d.rgpd;
 
-      const InfoBlock = ({ icon, title, color, bg, border, children }) => (
+      const Card = ({ title, icon, color, bg, border, children }) => (
         <div style={{
-          display: 'flex', gap: '16px', padding: '20px 24px',
-          background: bg, border: `1px solid ${border}`,
-          borderRadius: T.radius, lineHeight: '22px',
+          background: T.color.white,
+          border: `1px solid ${T.color.border}`,
+          borderRadius: T.radius,
+          boxShadow: T.shadow.card,
+          overflow: 'hidden',
         }}>
+          {/* Card header */}
           <div style={{
-            flexShrink: 0, width: '40px', height: '40px', borderRadius: '10px',
-            background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: '16px 24px',
+            background: bg,
+            borderBottom: `1px solid ${border}`,
           }}>
-            {icon}
+            <div style={{
+              flexShrink: 0, width: '36px', height: '36px', borderRadius: '10px',
+              background: color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {icon}
+            </div>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: T.color.textDark }}>
+              {title}
+            </h3>
           </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: T.color.textDark, margin: '0 0 6px 0' }}>{title}</p>
-            <div style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '22px' }}>{children}</div>
+          {/* Card body */}
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {children}
           </div>
         </div>
       );
 
-      const CheckRow = ({ checked, onChange, required, children, hasError }) => (
+      const CheckRow = ({ checked, onChange, children, hasError }) => (
         <label style={{
           display: 'flex', gap: '14px', alignItems: 'flex-start', cursor: 'pointer',
-          padding: '18px 20px', background: T.color.white,
-          border: `1px solid ${hasError ? '#FF2B44' : checked ? '#1B324F' : T.color.border}`,
-          borderRadius: T.radius, transition: 'border-color 0.15s',
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
         }}>
           <div
             onClick={onChange}
@@ -4712,7 +4735,6 @@
             )}
           </div>
           <span style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '22px', userSelect: 'none' }}>
-            {required && <span style={{ color: T.color.primaryRed, marginRight: '3px' }}>*</span>}
             {children}
           </span>
         </label>
@@ -4724,106 +4746,75 @@
           {/* Title */}
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: 700, color: T.color.textDark, margin: '0 0 8px 0', lineHeight: '36px' }}>
-              Consentement et RGPD
+              RGPD et confirmation de soumission
             </h2>
             <p style={{ fontSize: '14px', color: T.color.gray, margin: 0 }}>
               Avant de soumettre votre dossier, veuillez prendre connaissance des informations suivantes et confirmer votre engagement.
             </p>
           </div>
 
-          {/* Info blocks */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-            {/* Bloc 1 — Utilisation des données */}
-            <InfoBlock
-              title="Utilisation de vos données"
-              color="#1B324F"
-              bg={T.color.infoBg}
-              border={T.color.infoBorder}
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B324F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-              }
-            >
-              L'ensemble des informations recueillies dans ce formulaire sont nécessaires pour votre inscription à l'Ordre et votre participation aux évènements de l'Ordre (Assemblées générales, Congrès, etc.). Elles font l'objet d'un traitement automatisé et sont destinées aux Conseils régionaux et au Conseil national de l'Ordre des experts-comptables.
-            </InfoBlock>
-
-            {/* Bloc 2 — Conservation */}
-            <InfoBlock
-              title="Durée de conservation"
-              color="#0369A1"
-              bg="#F0F9FF"
-              border="#BAE6FD"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369A1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-              }
-            >
-              <ul style={{ margin: '0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <li>Vos données seront conservées <strong>jusqu'à 5 ans après votre radiation</strong>.</li>
-                <li>La dernière attestation d'assurance sera archivée <strong>sans limitation de durée</strong> en cas de mise en cause de responsabilité.</li>
-                <li>Vos données anonymisées seront archivées sans limitation de durée aux fins de statistiques professionnelles dans le respect de l'article 29 7° du décret du 30 mars 2012.</li>
-              </ul>
-            </InfoBlock>
-
-            {/* Bloc 3 — Vos droits */}
-            <InfoBlock
-              title="Vos droits sur vos données personnelles"
-              color="#7C3AED"
-              bg="#F5F3FF"
-              border="#DDD6FE"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
-                </svg>
-              }
-            >
+          {/* ============ CARTE 1 — RGPD ============ */}
+          <Card
+            title="RGPD"
+            color="#1B324F"
+            bg="#EAE6FF"
+            border="#D6CEFF"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B324F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            }
+          >
+            <p style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '22px', margin: 0 }}>
+              L'ensemble des informations recueillies dans le présent formulaire sont nécessaires pour votre inscription à l'Ordre et votre participation aux évènements de l'Ordre (Assemblées générales, Congrès etc.) Elles font l'objet d'un traitement automatisé et sont destinées aux Conseils régionaux et au Conseil national de l'Ordre des experts-comptables.
+            </p>
+            <p style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '22px', margin: 0 }}>
+              Vos données seront conservées jusqu'à 5 ans après votre radiation. La dernière attestation d'assurance sera archivée sans limitation de durée en cas de mise en cause de responsabilité. Vos données anonymisées seront archivées sans limitation de durée aux fins de statistiques professionnelles dans le respect de l'article 29 7° du décret du 30 mars 2012.
+            </p>
+            <p style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '22px', margin: 0 }}>
               Nous vous rappelons que vous disposez d'un droit à la portabilité de vos données, de droits d'accès, de rectification, de limitation et d'opposition pour motifs légitimes, ainsi que du droit de définir des directives relatives au sort de vos données personnelles après votre mort sous réserves des dispositions légales et réglementaires applicables. Vous avez la possibilité d'introduire une réclamation auprès de la Commission nationale de l'informatique et des libertés, autorité de contrôle en charge du respect des obligations en matière des données à caractère personnel : 3 Place de Fontenoy – TSA 80715 – 75334 Paris 07.
-            </InfoBlock>
-
-            {/* Bloc 4 — Exercer ses droits */}
-            <InfoBlock
-              title="Comment exercer vos droits ?"
-              color="#047857"
-              bg="#F0FDF4"
-              border="#BBF7D0"
-              icon={
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/>
-                </svg>
-              }
-            >
-              Pour exercer vos droits, vous pouvez formuler votre demande directement depuis <strong>PEP Assist</strong>.
-            </InfoBlock>
-          </div>
-
-          {/* Separator */}
-          <div style={{ height: '1px', background: T.color.border }} />
-
-          {/* Checkboxes */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <p style={{ fontSize: '13px', color: T.color.gray, margin: 0 }}>
-              <span style={{ color: T.color.primaryRed }}>*</span> Champs obligatoires
+            </p>
+            <p style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '22px', margin: 0 }}>
+              Pour exercer vos droits, vous pouvez formuler votre demande depuis <strong>PEP Assist</strong>.
             </p>
 
-            <CheckRow
-              checked={engagementChecked}
-              onChange={() => u('engagement', !engagementChecked)}
-              required
-            >
-              Je m'engage à communiquer au Conseil régional de l'Ordre, dans un délai maximum de deux mois, tout changement intervenu dans mon adresse ou ma situation professionnelle, et à joindre les justificatifs correspondants.
-            </CheckRow>
+            {/* Checkbox engagement */}
+            <div style={{ marginTop: '6px' }}>
+              <CheckRow
+                checked={engagementChecked}
+                onChange={() => u('engagement', !engagementChecked)}
+              >
+                Je m'engage à déposer sur mon espace personnel, dans un délai de 2 mois à compter de la date de la décision prononçant l'inscription au Tableau de l'Ordre de la société, les statuts enregistrés, un extrait Kbis, l'attestation d'assurance RCP définitive ainsi que, le cas échéant, le rapport du commissaire aux apports et le détail des engagements repris par la société.
+                <br /><br />
+                Ainsi qu'à faire connaître au Conseil régional au travers de la plateforme, dans un délai maximum d'un mois à compter de sa survenance, tout changement relatif à la situation de la société, en joignant copie certifiée conforme des documents sociaux le mentionnant ainsi que l'extrait Kbis qui en fait état.
+              </CheckRow>
+            </div>
+          </Card>
+
+          {/* ============ CARTE 2 — Confirmation de soumission ============ */}
+          <Card
+            title="Confirmation de soumission"
+            color="#1B324F"
+            bg="#EAE6FF"
+            border="#D6CEFF"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B324F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            }
+          >
+            <p style={{ fontSize: '14px', color: T.color.textDark, lineHeight: '22px', margin: 0, textAlign: 'left' }}>
+              Veuillez confirmer l'exactitude des informations saisies et votre prise de connaissance des conditions d'inscription à l'Ordre des experts-comptables avant de soumettre votre demande.
+            </p>
 
             <CheckRow
               checked={rgpdChecked}
               onChange={() => u('rgpd', !rgpdChecked)}
-              required
             >
-              J'ai pris connaissance des informations ci-dessus relatives au traitement de mes données personnelles et j'accepte les conditions d'utilisation.
+              Je certifie sur l'honneur l'exactitude des informations contenues dans le présent questionnaire et déclare avoir pris connaissance des conditions d'inscription à l'Ordre des experts-comptables.
             </CheckRow>
-          </div>
+          </Card>
 
         </div>
       );
@@ -6086,6 +6077,12 @@
           const valid = LBC_FUNCTIONS.filter(f => f.required).every(f => covered.has(f.id));
           if (!valid) { setLbcAttempted(true); return; }
         }
+        // Dernière étape : soumission du formulaire
+        if (stepName === "RGPD et confirmation de soumission") {
+          if (!stepConsent.engagement || !stepConsent.rgpd) return;
+          alert('Votre demande a été soumise avec succès et transmise au CRO.');
+          return;
+        }
         setStep4Attempted(false);
         setLbcAttempted(false);
         window.scrollTo(0, 0);
@@ -6139,7 +6136,7 @@
           case "Liste des bénéficiaires effectifs": return <StepBeneficiairesContent />;
           case "Responsable ordinal": return <StepResponsableOrdinalContent data={stepResponsable} update={updateStepResponsable} />;
           case "Pièces justificatives": return <StepPiecesContent data={stepPieces} update={updateStepPieces} />;
-          case "Consentement et RGPD": return <StepConsentementContent data={stepConsent} update={updateStepConsent} />;
+          case "RGPD et confirmation de soumission": return <StepConsentementContent data={stepConsent} update={updateStepConsent} />;
           default: return (
             <div style={{ padding: '40px', textAlign: 'center', color: T.color.gray }}>
               <h2 style={{ fontSize: '24px', fontWeight: 700, color: T.color.textDark, marginBottom: '16px' }}>
@@ -6154,9 +6151,12 @@
       // canNext : bloque uniquement sur l'étape "Responsable ordinal" si le formulaire n'est pas complet.
       // Les autres étapes conservent le comportement existant (validation au clic via goNext).
       const currentStepName = steps[currentStep - 1];
+      const isLastStep = currentStepName === "RGPD et confirmation de soumission";
       const canNext = currentStepName === "Responsable ordinal"
         ? isStepResponsableValid(stepResponsable)
-        : true;
+        : isLastStep
+          ? !!(stepConsent.engagement && stepConsent.rgpd)
+          : true;
 
       return (
         <div style={{ minHeight: '100vh', background: T.color.bg }}>
@@ -6190,6 +6190,7 @@
             onSave={() => alert('Formulaire enregistré pour plus tard.')}
             showPrev={currentStep > 1}
             showSave={currentStep !== 2}
+            isLastStep={isLastStep}
           />
         </div>
       );
